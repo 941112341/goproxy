@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package gen;
+
+message Response {
+  int64 code = 1;
+  string message = 2;
+  string data = 3;
+  Context ctx = 4;
+}
+
+message Request {
+  string parameter = 1;
+  Context ctx = 2;
+}
+
+message Context {
+  map<string, string> maps = 1;
+  Context ctx = 2;
+}
