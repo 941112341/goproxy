@@ -5,6 +5,7 @@ import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
+import io.netty.channel.socket.SocketChannel
 import io.netty.handler.codec.http.*
 import java.nio.charset.Charset
 import java.util.*
@@ -27,11 +28,11 @@ class CoreServer: SimpleChannelInboundHandler<FullHttpRequest> () {
         val context = Message.Context.newBuilder().putAllMaps(map).build()
         val message = Message.Request.newBuilder().setCtx(context).setParameter(body).build()
 
-        val channel = borrowChannel(uri)
+        ChannelManager.transfer(uri, ctx!!.channel() as SocketChannel, message)
 
-        val resp = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer("hello world", Charset.defaultCharset()))
-        resp.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html; charset=UTF-8")
-        ctx!!.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE)
+//        val resp = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer("hello world", Charset.defaultCharset()))
+//        resp.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html; charset=UTF-8")
+//        ctx!!.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {

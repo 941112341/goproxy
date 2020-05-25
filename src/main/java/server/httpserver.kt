@@ -3,6 +3,7 @@ package server
 import config.GlobalConfig
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.ChannelInitializer
+import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
@@ -46,6 +47,7 @@ class HttpServer(private val port: Int) {
         val server = ServerBootstrap()
         masterThreadPool = NioEventLoopGroup().also { workerThreadPool = NioEventLoopGroup() }
         server.group(masterThreadPool, workerThreadPool).channel(NioServerSocketChannel::class.java).handler(LoggingHandler(LogLevel.DEBUG))
+        server.option(ChannelOption.SO_KEEPALIVE, true)
         server.childHandler(object: ChannelInitializer<SocketChannel>() {
             @Throws(Exception::class)
             override fun initChannel(socketChannel: SocketChannel) {
