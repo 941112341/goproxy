@@ -12,6 +12,7 @@ import io.netty.handler.codec.http.HttpServerCodec
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.handler.ssl.SslHandler
+import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.io.InputStream
 import java.security.*
@@ -39,6 +40,7 @@ class HttpServer(private val port: Int) {
     private val masterThreadPool:NioEventLoopGroup
     private val workerThreadPool:NioEventLoopGroup
     private val server:ServerBootstrap
+    private val log = LoggerFactory.getLogger(javaClass)
     val sslContext by lazy {
         initSSLContext()
     }
@@ -46,13 +48,13 @@ class HttpServer(private val port: Int) {
     init {
         val server = ServerBootstrap()
         masterThreadPool = NioEventLoopGroup().also { workerThreadPool = NioEventLoopGroup() }
-        server.group(masterThreadPool, workerThreadPool).channel(NioServerSocketChannel::class.java).handler(LoggingHandler(LogLevel.DEBUG))
+        server.group(masterThreadPool, workerThreadPool).channel(NioServerSocketChannel::class.java)
         server.option(ChannelOption.SO_KEEPALIVE, true)
         server.childHandler(object: ChannelInitializer<SocketChannel>() {
             @Throws(Exception::class)
             override fun initChannel(socketChannel: SocketChannel) {
                 val pipeline = socketChannel.pipeline()
-                pipeline.addLast("logger", LoggingHandler(LogLevel.DEBUG))
+                pipeline.addLast("logger", LoggingHandler(LogLevel.INFO))
                 if (GlobalConfig.ssl) {
                     val sslEngine: SSLEngine = sslContext.createSSLEngine()
                     sslEngine.useClientMode = false
@@ -64,20 +66,22 @@ class HttpServer(private val port: Int) {
             }
         })
         this.server = server
+        ChannelManager.debug()
     }
 
     fun run() {
-        val future = server.bind(this.port).sync()
+        val future = server.bind( this.port).sync()
         if (!future.isSuccess) {
             throw Exception(future.cause().message)
         } else {
-            println("success bind port " + this.port)
+            log.debug("success bind port {}", this.port)
         }
         future.channel().closeFuture().sync()
     }
 
     fun shutDown() {
         masterThreadPool.shutdownGracefully().also { workerThreadPool.shutdownGracefully() }
+        ChannelManager.close()
     }
 
 }
