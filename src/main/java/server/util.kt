@@ -1,5 +1,6 @@
 package server
 
+import gen.Message
 import io.netty.channel.Channel
 import io.netty.channel.ChannelFutureListener
 
@@ -14,5 +15,8 @@ fun channelId(channel: Channel):String {
 
 fun poolUrl(channel: Channel):String {
     return channel.attr(pool)?.get()?.uri ?: "null"
+}
 
+fun idleMessage(): Message.Request {
+    return Message.Request.getDefaultInstance()
 }

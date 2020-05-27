@@ -12,11 +12,12 @@ import io.netty.handler.codec.http.HttpServerCodec
 import io.netty.handler.logging.LogLevel
 import io.netty.handler.logging.LoggingHandler
 import io.netty.handler.ssl.SslHandler
+import io.netty.handler.timeout.ReadTimeoutHandler
+import io.netty.handler.timeout.WriteTimeoutHandler
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import java.io.InputStream
 import java.security.*
-import java.security.cert.CertificateException
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLEngine
@@ -54,6 +55,9 @@ class HttpServer(private val port: Int) {
             @Throws(Exception::class)
             override fun initChannel(socketChannel: SocketChannel) {
                 val pipeline = socketChannel.pipeline()
+                pipeline.addLast(WriteTimeoutHandler(serverTimeout, TimeUnit.SECONDS))
+                pipeline.addLast(ReadTimeoutHandler(serverTimeout, TimeUnit.SECONDS))
+                pipeline.addLast("metrics", MetricsHandler(serverTimeout * 1000, LogStatus.Write))
                 pipeline.addLast("logger", LoggingHandler(LogLevel.INFO))
                 if (GlobalConfig.ssl) {
                     val sslEngine: SSLEngine = sslContext.createSSLEngine()

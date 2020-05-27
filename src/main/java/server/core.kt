@@ -15,13 +15,17 @@ class CoreServer: SimpleChannelInboundHandler<FullHttpRequest> () {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun messageReceived(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
-        val req = msg!!
-        val uri = req.uri() ?: "/"
 
+    override fun channelActive(ctx: ChannelHandlerContext?) {
         val uuid = UUID.randomUUID().toString()
         val channel = ctx!!.channel()
         channel.attr(unionId).set(uuid)
+        super.channelActive(ctx)
+    }
+
+    override fun messageReceived(ctx: ChannelHandlerContext?, msg: FullHttpRequest?) {
+        val req = msg!!
+        val uri = req.uri() ?: "/"
 
         // build
         val body = req.content().toString(Charset.defaultCharset())
@@ -34,11 +38,8 @@ class CoreServer: SimpleChannelInboundHandler<FullHttpRequest> () {
         val context = Message.Context.newBuilder().putAllMaps(map).build()
         val message = Message.Request.newBuilder().setCtx(context).setParameter(body).build()
 
-        ChannelManager.transfer(uri, ctx.channel() as SocketChannel, message)
+        ChannelManager.transfer(uri, ctx!!.channel() as SocketChannel, message)
 
-//        val resp = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.copiedBuffer("hello world", Charset.defaultCharset()))
-//        resp.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html; charset=UTF-8")
-//        ctx.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {

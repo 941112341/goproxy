@@ -9,7 +9,8 @@ import io.netty.util.AttributeKey
 
 val realClient = AttributeKey.newInstance<Channel>("realClient")!!
 val pool = AttributeKey.newInstance<SocketChannelPool>("channelPool")!!
-val unionId = AttributeKey.newInstance<String>("uuid")
+val unionId = AttributeKey.newInstance<String>("uuid")!!
+
 
 val errorResponse = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(500))
 
@@ -17,3 +18,6 @@ const val defaultReadTimeout: Long = 60
 const val defaultWriteTimeout: Long = 40
 
 const val maxSocketNum = 50
+
+
+const val serverTimeout:Long = 3

@@ -16,6 +16,8 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
+import io.netty.handler.timeout.ReadTimeoutHandler
+import io.netty.handler.timeout.WriteTimeoutHandler
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -76,13 +78,14 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
         bootstarp.handler(object : ChannelInitializer<SocketChannel>() {
             override fun initChannel(ch: SocketChannel?) {
                 val pipeline = ch!!.pipeline()
+                pipeline.addLast("metrics", MetricsHandler(serverTimeout * 1000, LogStatus.Read))
                 pipeline.addLast(ProtobufVarint32FrameDecoder())
                 pipeline.addLast(ProtobufDecoder(Message.Response.getDefaultInstance()))
                 pipeline.addLast(ProtobufVarint32LengthFieldPrepender())
                 pipeline.addLast(ProtobufEncoder())
                 pipeline.addLast(IdleProxyClient(defaultReadTimeout, defaultWriteTimeout,
                         0, TimeUnit.SECONDS))
-                pipeline.addLast(ProtoClient(this@SocketChannelPool))
+                pipeline.addLast("client", ProtoClient(this@SocketChannelPool))
             }
         })
     }
@@ -139,67 +142,6 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
         channelQueue.forEach { list.add(it.attr(unionId).get()) }
 
         log.info("uri {} queue {} socketCnt {}", uri, JSON.toJSONString(list), socketCnt)
-    }
-}
-
-class ProtoClient(val socketChannelPool: SocketChannelPool): SimpleChannelInboundHandler<Message.Response>() {
-
-    val log = LoggerFactory.getLogger(javaClass)
-
-    override fun messageReceived(ctx: ChannelHandlerContext?, msg: Message.Response?) {
-        val channel = ctx!!.channel()
-        val protoMsg = msg!!
-        if (protoMsg.ctx == Message.Context.getDefaultInstance()) {
-            log.debug("{} receive idle message, uri= {}", channelId(channel), poolUrl(channel))
-            return
-        }
-        // just for debug
-       val data = if (protoMsg.data != "") protoMsg.data else "hello world"
-
-        val alloc = channel.alloc()
-        val buffer = alloc.buffer()
-        buffer.writeBytes(data.toByteArray())
-
-        val resp = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, buffer)
-
-        val header = protoMsg.ctx.getValue("http-header")
-        val headers = JSON.parseObject(header, Map::class.java)
-        headers?.forEach { resp.headers()[it.key.toString()] = it.value.toString()}
-        val rc = channel.attr(realClient).get()
-        if (rc == null || !rc.isActive) {
-            log.error("real client not active")
-            return
-        }
-        rc.writeAndFlush(resp)?.addListener(object : ChannelFutureListener {
-            override fun operationComplete(future: ChannelFuture?) {
-
-                log.info("return http response channel {} uri {} realChannel {} success? {}", channelId(channel), poolUrl(channel), channelId(rc), future?.isSuccess)
-
-                future!!.channel().close()
-                if (channel is SocketChannel) {
-                    socketChannelPool.returnChannel(channel)
-                } else {
-                    log.error("channel is not socket channel")
-                }
-            }
-        })
-    }
-
-    override fun channelInactive(ctx: ChannelHandlerContext?) {
-        log.info("channel inactive")
-        val channel = ctx!!.channel()
-        socketChannelPool.remove(channel)
-        channel.attr(realClient).get()?.let {
-            if (it.isActive) {
-                it.close()
-            }
-        }
-        super.channelInactive(ctx)
-    }
-
-    override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-        log.error("exception caught {}", cause)
-        super.exceptionCaught(ctx, cause)
     }
 }
 
