@@ -26,13 +26,15 @@ import javax.net.ssl.TrustManagerFactory
 
 lateinit var server:HttpServer
 
-fun Init() {
+fun init() {
     try {
+        Discover.init()
         server = HttpServer(GlobalConfig.port)
         server.run()
     } catch (ex: java.lang.Exception) {
         ex.printStackTrace()
     } finally {
+        Discover.close()
         server.shutDown()
     }
 }

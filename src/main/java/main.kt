@@ -1,4 +1,4 @@
 fun main() {
-    Init()
+    init()
 }
 

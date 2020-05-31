@@ -2,7 +2,7 @@ package util
 
 import java.util.ResourceBundle
 
-inline class Config(val resourceBundle: ResourceBundle)
+class Config(val resourceBundle: ResourceBundle)
 
 fun Config.GetValue(key: String): String? {
     try {

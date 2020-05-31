@@ -1,5 +1,5 @@
 
-fun Init() {
-    config.Init()
-    server.Init()
+fun init() {
+    config.init()
+    server.init()
 }

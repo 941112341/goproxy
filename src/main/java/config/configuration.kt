@@ -1,21 +1,26 @@
 package config
 
+import checkers.units.quals.C
+import util.Config
 import util.GetValue
 import util.GetValueDefault
 
 data class Configuration(val port:Int, val ssl: Boolean, val sslFile: String?, val sslPassword: String?)
 
 lateinit var GlobalConfig: Configuration
+lateinit var Config: Config
 
-fun Init(base:String = "config"):Int {
-    val config = util.NewConfig(base)
-    return if (config == null) -1 else {
+fun init(base:String = "config") {
+    Config = util.NewConfig(base)!!
         GlobalConfig = Configuration(
-                port = config.GetValueDefault("port", "443").toInt(),
-                ssl = config.GetValueDefault("ssl", "true").toBoolean(),
-                sslFile = config.GetValue("sslFile"),
-                sslPassword = config.GetValue("sslPassword")
+                port = Config.GetValueDefault("port", "443").toInt(),
+                ssl = Config.GetValueDefault("ssl", "true").toBoolean(),
+                sslFile = Config.GetValue("sslFile"),
+                sslPassword = Config.GetValue("sslPassword")
         )
-        0
-    }
+
+}
+
+fun getValueDefault(key: String, value: String): String {
+    return Config.GetValueDefault(key, value)
 }

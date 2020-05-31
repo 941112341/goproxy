@@ -13,11 +13,9 @@ val unionId = AttributeKey.newInstance<String>("uuid")!!
 
 
 val errorResponse = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(500))
+var notFoundResponse = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(404))
 
 const val defaultReadTimeout: Long = 60
 const val defaultWriteTimeout: Long = 40
-
 const val maxSocketNum = 50
-
-
 const val serverTimeout:Long = 3

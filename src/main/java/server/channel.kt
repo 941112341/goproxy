@@ -16,6 +16,8 @@ import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
+import io.netty.handler.timeout.IdleStateEvent
+import io.netty.handler.timeout.IdleStateHandler
 import io.netty.handler.timeout.ReadTimeoutHandler
 import io.netty.handler.timeout.WriteTimeoutHandler
 import org.slf4j.LoggerFactory
@@ -85,6 +87,7 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
                 pipeline.addLast(ProtobufEncoder())
                 pipeline.addLast(IdleProxyClient(defaultReadTimeout, defaultWriteTimeout,
                         0, TimeUnit.SECONDS))
+
                 pipeline.addLast("client", ProtoClient(this@SocketChannelPool))
             }
         })
@@ -97,8 +100,13 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
                 writeError(realChannel)
                 return
             }
-            val (host, part) = getTarget()
-            bootstarp.connect(host, part).addListener(object: ChannelFutureListener {
+            val target = getTarget()
+            if (target == null) {
+                realChannel.writeAndFlush(notFoundResponse)
+                return
+            }
+            val (host, port) = target
+            bootstarp.connect(host, port).addListener(object: ChannelFutureListener {
                 override fun operationComplete(future: ChannelFuture?) {
                     if (!future!!.isSuccess) {
                         future.cause().printStackTrace()
@@ -123,8 +131,8 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
         }
     }
 
-    fun getTarget():Pair<String, Int> {
-        return Pair("127.0.0.1", 8888)
+    private fun getTarget():Pair<String, Int>? {
+        return Discover.getSource(uri)?.toPair()
     }
 
     fun close() {
@@ -145,3 +153,28 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
     }
 }
 
+class IdleProxyClient(r: Long, w: Long, rw: Long, timeUnit: TimeUnit): IdleStateHandler(r, w, rw, timeUnit) {
+
+    val log = LoggerFactory.getLogger(javaClass)
+
+    override fun channelIdle(ctx: ChannelHandlerContext?, evt: IdleStateEvent?) {
+        if (evt == IdleStateEvent.FIRST_WRITER_IDLE_STATE_EVENT) {
+            val channel = ctx!!.channel()
+            if (channel.isActive) {
+                channel.writeAndFlush(idleMessage())
+                log.info("this socket {} is active, uri {}", channel.attr(unionId).get(), channel.attr(pool).get()?.uri)
+            } else {
+                log.info("this socket {} is inactive", channel.attr(unionId).get())
+            }
+        } else if (evt == IdleStateEvent.FIRST_READER_IDLE_STATE_EVENT) {
+            val channel = ctx!!.channel()
+            val channelPool = channel.attr(pool).get()
+            channelPool.remove(channel)
+            channel.attr(pool).remove()
+            channel.attr(realClient).remove()
+            log.info("idle timeout, close channel {}, pool {} socketCnt {}", channel.attr(unionId).get(), channelPool.uri, channelPool.socketCnt--)
+        }
+        super.channelIdle(ctx, evt)
+    }
+
+}
