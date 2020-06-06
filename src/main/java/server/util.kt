@@ -14,9 +14,13 @@ fun channelId(channel: Channel):String {
 }
 
 fun poolUrl(channel: Channel):String {
-    return channel.attr(pool)?.get()?.uri ?: "null"
+    return channel.attr(pool)?.get()?.namespace ?: "null"
 }
 
 fun idleMessage(): Message.Request {
     return Message.Request.getDefaultInstance()
+}
+
+fun realNamespace(namespace: String): String {
+    return namespace.takeLastWhile { it != '/' }
 }

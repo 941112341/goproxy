@@ -24,3 +24,7 @@ fun init(base:String = "config") {
 fun getValueDefault(key: String, value: String): String {
     return Config.GetValueDefault(key, value)
 }
+
+fun getValue(key:String):String {
+    return Config.GetValue(key)!!
+}

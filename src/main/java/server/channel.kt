@@ -2,24 +2,17 @@ package server
 
 import com.alibaba.fastjson.JSON
 import gen.Message
-import gen.getValue
 import io.netty.bootstrap.Bootstrap
 import io.netty.channel.*
-import io.netty.channel.nio.NioEventLoop
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioSocketChannel
-import io.netty.handler.codec.http.DefaultFullHttpResponse
-import io.netty.handler.codec.http.HttpResponseStatus
-import io.netty.handler.codec.http.HttpVersion
 import io.netty.handler.codec.protobuf.ProtobufDecoder
 import io.netty.handler.codec.protobuf.ProtobufEncoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder
 import io.netty.handler.codec.protobuf.ProtobufVarint32LengthFieldPrepender
 import io.netty.handler.timeout.IdleStateEvent
 import io.netty.handler.timeout.IdleStateHandler
-import io.netty.handler.timeout.ReadTimeoutHandler
-import io.netty.handler.timeout.WriteTimeoutHandler
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -44,7 +37,7 @@ object ChannelManager {
             synchronized(nameChannelMap) {
                 var pool = nameChannelMap[uri]
                 if (pool == null) {
-                    pool = SocketChannelPool(uri = uri)
+                    pool = SocketChannelPool(namespace = uri)
                     nameChannelMap[uri] = pool
                 }
             }
@@ -67,7 +60,7 @@ object ChannelManager {
 }
 
 class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketChannel> = ConcurrentLinkedQueue<SocketChannel>(),
-                        val uri:String)
+                        val namespace:String)
     :Queue<SocketChannel> by channelQueue {
     private val bootstarp = Bootstrap()
     private val group = NioEventLoopGroup()
@@ -119,7 +112,7 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
                         channel.attr(unionId).set(uuid)
                         channel.writeAndFlush(msg)
                         log.info("connector {} => real {}, uri {}, socketCnt {}", uuid,
-                                realChannel.attr(unionId).get(), uri, ++socketCnt)
+                                realChannel.attr(unionId).get(), namespace, ++socketCnt)
                     }
                 }
             })
@@ -127,12 +120,12 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
             channel.attr(realClient).set(realChannel)
             channel.writeAndFlush(msg)
             log.info("connector {} => real {}, uri {}, socketCnt {}", channel.attr(unionId).get(),
-                    realChannel.attr(unionId).get(), uri, socketCnt)
+                    realChannel.attr(unionId).get(), namespace, socketCnt)
         }
     }
 
     private fun getTarget():Pair<String, Int>? {
-        return Discover.getSource(uri)?.toPair()
+        return Discover.getSource(namespace)?.toPair()
     }
 
     fun close() {
@@ -142,14 +135,14 @@ class SocketChannelPool(private val channelQueue:ConcurrentLinkedQueue<SocketCha
     fun returnChannel(channel: SocketChannel) {
         add(channel)
         channel.attr(realClient).remove()
-        log.info("socketNum {} and return socket {} url {}", socketCnt, channel.attr(unionId).get(), channel.attr(pool).get()?.uri)
+        log.info("socketNum {} and return socket {} url {}", socketCnt, channel.attr(unionId).get(), channel.attr(pool).get()?.namespace)
     }
 
     fun debug() {
         val list = mutableListOf<String>()
         channelQueue.forEach { list.add(it.attr(unionId).get()) }
 
-        log.info("uri {} queue {} socketCnt {}", uri, JSON.toJSONString(list), socketCnt)
+        log.info("uri {} queue {} socketCnt {}", namespace, JSON.toJSONString(list), socketCnt)
     }
 }
 
@@ -162,7 +155,7 @@ class IdleProxyClient(r: Long, w: Long, rw: Long, timeUnit: TimeUnit): IdleState
             val channel = ctx!!.channel()
             if (channel.isActive) {
                 channel.writeAndFlush(idleMessage())
-                log.info("this socket {} is active, uri {}", channel.attr(unionId).get(), channel.attr(pool).get()?.uri)
+                log.info("this socket {} is active, uri {}", channel.attr(unionId).get(), channel.attr(pool).get()?.namespace)
             } else {
                 log.info("this socket {} is inactive", channel.attr(unionId).get())
             }
@@ -172,7 +165,7 @@ class IdleProxyClient(r: Long, w: Long, rw: Long, timeUnit: TimeUnit): IdleState
             channelPool.remove(channel)
             channel.attr(pool).remove()
             channel.attr(realClient).remove()
-            log.info("idle timeout, close channel {}, pool {} socketCnt {}", channel.attr(unionId).get(), channelPool.uri, channelPool.socketCnt--)
+            log.info("idle timeout, close channel {}, pool {} socketCnt {}", channel.attr(unionId).get(), channelPool.namespace, channelPool.socketCnt--)
         }
         super.channelIdle(ctx, evt)
     }
