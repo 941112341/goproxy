@@ -1,6 +1,11 @@
 package server
 
+import client.Discover
+import client.ProtobufClient
+import common.serverTimeout
 import config.GlobalConfig
+import handler.CoreServer
+import handler.ProtoClient
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.channel.ChannelInitializer
 import io.netty.channel.ChannelOption
@@ -36,6 +41,7 @@ fun init() {
     } finally {
         Discover.close()
         server.shutDown()
+        ProtobufClient.close()
     }
 }
 
@@ -59,7 +65,6 @@ class HttpServer(private val port: Int) {
                 val pipeline = socketChannel.pipeline()
                 pipeline.addLast(WriteTimeoutHandler(serverTimeout, TimeUnit.SECONDS))
                 pipeline.addLast(ReadTimeoutHandler(serverTimeout, TimeUnit.SECONDS))
-                pipeline.addLast("metrics", MetricsHandler(serverTimeout * 1000, LogStatus.Write))
                 pipeline.addLast("logger", LoggingHandler(LogLevel.INFO))
                 if (GlobalConfig.ssl) {
                     val sslEngine: SSLEngine = sslContext.createSSLEngine()
@@ -72,7 +77,6 @@ class HttpServer(private val port: Int) {
             }
         })
         this.server = server
-        ChannelManager.debug()
     }
 
     fun run() {
@@ -87,7 +91,6 @@ class HttpServer(private val port: Int) {
 
     fun shutDown() {
         masterThreadPool.shutdownGracefully().also { workerThreadPool.shutdownGracefully() }
-        ChannelManager.close()
     }
 
 }

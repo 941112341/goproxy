@@ -1,8 +1,8 @@
-package server
+package handler
 
+import client.ProtobufClient
+import common.unionId
 import gen.Message
-import io.netty.buffer.Unpooled
-import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.channel.socket.SocketChannel
@@ -14,7 +14,6 @@ import java.util.*
 class CoreServer: SimpleChannelInboundHandler<FullHttpRequest> () {
 
     private val log = LoggerFactory.getLogger(javaClass)
-
 
     override fun channelActive(ctx: ChannelHandlerContext?) {
         val uuid = UUID.randomUUID().toString()
@@ -31,15 +30,17 @@ class CoreServer: SimpleChannelInboundHandler<FullHttpRequest> () {
         val body = req.content().toString(Charset.defaultCharset())
         val map = mutableMapOf<String, String>()
         for (header in req.headers()) {
-            map[header.key.toString()] = header.value.toString()
+            val key = header.key.toString()
+            map[key] = header.value.toString()
         }
         val requestID = UUID.randomUUID()
+        map["url"] = msg.uri()
+        map["method"] = msg.method().toString()
         map["requestID"] = requestID.toString()
         val context = Message.Context.newBuilder().putAllMaps(map).build()
         val message = Message.Request.newBuilder().setCtx(context).setParameter(body).build()
 
-        ChannelManager.transfer(uri, ctx!!.channel() as SocketChannel, message)
-
+        ProtobufClient.transfer(uri, ctx!!.channel() as SocketChannel, message)
     }
 
     override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {

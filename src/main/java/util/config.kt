@@ -8,7 +8,6 @@ fun Config.GetValue(key: String): String? {
     try {
         return this.resourceBundle.getString(key)
     } catch (ex: Exception) {
-        ex.printStackTrace()
         return null
     }
 }

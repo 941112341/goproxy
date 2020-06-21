@@ -10,7 +10,7 @@ data class Configuration(val port:Int, val ssl: Boolean, val sslFile: String?, v
 lateinit var GlobalConfig: Configuration
 lateinit var Config: Config
 
-fun init(base:String = "config") {
+fun initConfig(base:String = "config") {
     Config = util.NewConfig(base)!!
         GlobalConfig = Configuration(
                 port = Config.GetValueDefault("port", "443").toInt(),

@@ -1,4 +1,5 @@
 fun main() {
-    init()
+    config.initConfig()
+    server.init()
 }
 
