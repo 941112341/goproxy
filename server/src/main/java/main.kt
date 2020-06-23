@@ -1,9 +1,7 @@
 import com.alibaba.fastjson.JSON
 import gen.Message
 import gen.getValue
-import gen.isIdle
 import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerAdapter
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInitializer
@@ -61,11 +59,6 @@ class TestServerHandler: ChannelHandlerAdapter() {
     override fun channelRead(ctx: ChannelHandlerContext?, msg: Any?) {
         val req = msg as Message.Request
         val channel = ctx!!.channel()
-        if (req.isIdle()) {
-            log.info("receive idle message")
-            channel.writeAndFlush(Message.Response.getDefaultInstance())
-            return
-        }
 
         log.info("body is {} ", req.parameter)
         log.info("header is {}", req.ctx.getValue("Host"))
