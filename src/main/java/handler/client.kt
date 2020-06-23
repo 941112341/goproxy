@@ -4,8 +4,6 @@ import com.alibaba.fastjson.JSON
 import common.realClient
 import gen.Message
 import gen.getValue
-import io.netty.channel.ChannelFuture
-import io.netty.channel.ChannelFutureListener
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.SimpleChannelInboundHandler
 import io.netty.handler.codec.http.DefaultFullHttpResponse

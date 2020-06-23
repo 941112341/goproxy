@@ -8,7 +8,6 @@ import org.apache.curator.framework.recipes.cache.CuratorCache
 import org.apache.curator.framework.recipes.cache.CuratorCacheListener
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.slf4j.LoggerFactory
-import sun.security.krb5.internal.crypto.Des
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -81,8 +80,9 @@ object Discover {
         }.build()
 
         cache.listenable().addListener(listen)
-        cache.listenable().addListener(serviceListen)
         cache.start()
+        serviceCache.listenable().addListener(serviceListen)
+        serviceCache.start()
     }
 
     private fun removeMeta(it: ChildData) {
@@ -122,8 +122,8 @@ object Discover {
         val meta = absoluteMap[rawUrl]
         if (meta == null) {
             for ((_, v) in regexMap) {
-                val urls = v.url.split("/")
-                val rawUrls = rawUrl.split("/")
+                val urls = v.url.split("/").filter { it != "" }
+                val rawUrls = rawUrl.split("/").filter { it != "" }
                 if (urls.size != rawUrls.size) {
                     continue
                 }

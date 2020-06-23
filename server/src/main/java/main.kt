@@ -74,6 +74,6 @@ class TestServerHandler: ChannelHandlerAdapter() {
         val s = JSON.toJSONString(maps)
         channel.writeAndFlush(Message.Response.newBuilder().setCtx(
                 Message.Context.newBuilder().putAllMaps(mapOf(Pair("http-header", s))).build()
-        ).build()).addListener(ChannelFutureListener.FIRE_EXCEPTION_ON_FAILURE)
+        ).build())
     }
 }
